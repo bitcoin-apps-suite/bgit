@@ -1,9 +1,10 @@
 // This is a placeholder for the actual HandCash SDK integration.
 // For Phase 1 validation, we are mocking the payment flow.
 
-async function pay(amount) {
+async function pay(amount, note = '') {
     return new Promise((resolve, reject) => {
         console.log(`Connecting to HandCash...`);
+        if (note) console.log(`📝 Attaching note: "${note}"`);
 
         // Simulate network delay
         setTimeout(() => {
