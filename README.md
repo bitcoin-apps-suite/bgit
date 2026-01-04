@@ -277,3 +277,4 @@ ISC
 Timestamp your code. Prove your work. Build on BSV.
 test
 test: verify payment flow Sun Jan  4 02:04:57 GMT 2026
+test retry 2
