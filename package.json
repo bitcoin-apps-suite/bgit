@@ -1,6 +1,6 @@
 {
   "name": "bgit-cli",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Bitcoin-enabled Git wrapper with HandCash OAuth - Timestamp your commits on BitcoinSV",
   "main": "index.js",
   "bin": {
