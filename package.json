@@ -1,18 +1,45 @@
 {
-  "name": "bgit",
-  "version": "1.0.0",
-  "description": "",
+  "name": "bgit-cli",
+  "version": "2.0.1",
+  "description": "Bitcoin-enabled Git wrapper with HandCash OAuth - Timestamp your commits on BitcoinSV",
   "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "bin": {
+    "bgit": "./index.js"
   },
-  "keywords": [],
-  "author": "",
+  "preferGlobal": true,
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
+  },
+  "keywords": [
+    "bitcoin",
+    "git",
+    "bsv",
+    "bitcoinsv",
+    "handcash",
+    "blockchain",
+    "timestamp",
+    "commit",
+    "version-control"
+  ],
+  "author": "b0ase",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@handcash/sdk": "^1.0.3",
-    "commander": "^14.0.2",
-    "dotenv": "^17.2.3"
-  }
+    "@handcash/handcash-connect": "^0.8.11",
+    "chalk": "^4.1.2",
+    "express": "^4.18.2",
+    "open": "^8.4.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bitcoin-apps-suite/bgit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/bitcoin-apps-suite/bgit/issues"
+  },
+  "homepage": "https://github.com/bitcoin-apps-suite/bgit#readme"
 }

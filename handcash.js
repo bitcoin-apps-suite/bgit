@@ -1,24 +1,36 @@
-// This is a placeholder for the actual HandCash SDK integration.
-// For Phase 1 validation, we are mocking the payment flow.
+const { HandCashConnect } = require('@handcash/handcash-connect');
 
-async function pay(amount, note = '') {
-    return new Promise((resolve, reject) => {
-        console.log(`Connecting to HandCash...`);
-        if (note) console.log(`📝 Attaching note: "${note}"`);
+async function pay(note) {
+    const appId = process.env.HANDCASH_APP_ID;
+    const appSecret = process.env.HANDCASH_APP_SECRET;
+    const authToken = process.env.HANDCASH_AUTH_TOKEN;
+    const treasury = process.env.BGIT_TREASURY_HANDLE || '$b0ase';
 
-        // Simulate network delay
-        setTimeout(() => {
-            // 90% chance of success for testing
-            const success = true;
+    if (!appId || !appSecret || !authToken) {
+        console.error('Missing HandCash Credentials (APP_ID, APP_SECRET, or AUTH_TOKEN)');
+        return;
+    }
 
-            if (success) {
-                console.log(`💸 Sent $${amount} via HandCash.`);
-                resolve({ txId: 'mock_tx_id_' + Date.now() });
-            } else {
-                reject(new Error('Insufficient funds or user cancelled.'));
-            }
-        }, 1500);
-    });
+    try {
+        const handCashConnect = new HandCashConnect({
+            appId: appId,
+            appSecret: appSecret,
+        });
+        const account = handCashConnect.getAccountFromAuthToken(authToken);
+
+        const paymentParameters = {
+            description: note || 'bGit Commit',
+            payments: [
+                { destination: treasury, currencyCode: 'BSV', sendAmount: 0.001 }
+            ]
+        };
+
+        const result = await account.wallet.pay(paymentParameters);
+        console.log(`[bGit] Payment Sent! ID: ${result.transactionId}`);
+        if (note) console.log(`[bGit] Timestamp: ${note}`);
+    } catch (error) {
+        console.error('[bGit] Payment Failed:', error.message);
+    }
 }
 
 module.exports = { pay };

@@ -1,0 +1,69 @@
+#!/usr/bin/env node
+
+const { program } = require('commander');
+const { pay } = require('./handcash');
+const { exec } = require('child_process');
+const commands = require('./lib/commands');
+const showBanner = require('./lib/banner');
+
+program
+    .name('bgit')
+    .description('Bitcoin Git - Pay to Operate')
+    .version('0.0.1');
+
+// Show banner if running without specific command (just 'bgit')
+if (process.argv.length <= 2) {
+    showBanner();
+}
+
+// Universal Command Handler
+const handleCommand = (cmd, args) => {
+    // Construct git command
+    const gitCmd = `git ${cmd} ${args.join(' ')}`;
+
+    // Execute Git
+    exec(gitCmd, (error, stdout, stderr) => {
+        if (error) {
+            console.error(`[bGit] Error: ${error.message}`);
+            return;
+        }
+        if (stderr) {
+            console.error(stderr);
+        }
+        console.log(stdout);
+
+        // Pay-to-Operate for ALL commands
+        let note = `bgit-${cmd}`;
+
+        // Extract commit hash if available
+        if (cmd === 'commit') {
+            const match = stdout.match(/\[.* ([a-f0-9]+)\]/);
+            if (match) {
+                note += ` ${match[1]}`;
+            }
+        }
+
+        pay(note).catch(err => console.error('[bGit] Payment Error:', err.message));
+    });
+};
+
+// Register all 155 commands
+commands.forEach(cmd => {
+    program
+        .command(cmd, { isDefault: false })
+        .description(`Executes git ${cmd} and pays for usage`)
+        .allowUnknownOption()
+        .action((options, command) => {
+            // Reconstruct args
+            const args = command.args;
+            handleCommand(cmd, args);
+        });
+});
+
+// Catch-all for any args passed to known commands
+program.on('command:*', function (operands) {
+    console.error(`error: unknown command '${operands[0]}'`);
+    process.exit(1);
+});
+
+program.parse(process.argv);
