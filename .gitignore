@@ -7,3 +7,7 @@ yarn-error.log*
 dist
 build
 coverage
+
+# Secrets — never commit
+.env.local
+.env.*

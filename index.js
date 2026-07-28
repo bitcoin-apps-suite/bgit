@@ -13,6 +13,10 @@
  * All other git commands pass through without payment
  */
 
+// Load HANDCASH_APP_SECRET (and any other vars) from .env.local before anything
+// reads process.env — the secret is no longer hardcoded (see lib/constants.js).
+require('./lib/load-env').loadEnv();
+
 const chalk = require('chalk');
 const showBanner = require('./lib/banner');
 const { ensureAuthenticated, loginCommand, logoutCommand, statusCommand } = require('./lib/auth');
