@@ -145,7 +145,27 @@ A typical source repo's full history lands between pennies and a few dollars.
 ```bash
 bgit chain verify-vendor   # confirm the vendored format sources are unmodified
 bgit chain spec            # print the on-chain format specification
+bgit chain credits         # who wrote the on-chain format
 ```
+
+### Broadcast providers
+
+Publishing broadcasts through a bridge on your own loopback interface, which
+forwards to, in order:
+
+1. **WhatsOnChain** — no configuration needed
+2. **GorillaPool ARC** — no configuration needed
+3. **TAAL ARC** — *only tried if `TAAL_API_KEY` is set*
+
+TAAL rejects unauthenticated requests with `401`, so it is skipped unless you
+provide a key. Set it in `.env.local` if you want the third fallback:
+
+```
+TAAL_API_KEY=your-taal-key
+```
+
+Pass `--bridge <url>` to bypass the local bridge and use your own endpoint; it
+must accept `POST {"rawTx":"<hex>"}`.
 
 ---
 
