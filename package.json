@@ -39,8 +39,16 @@
     "@bsv/sdk": "^2.4.1",
     "@handcash/handcash-connect": "^0.8.11",
     "chalk": "^4.1.2",
-    "express": "^4.18.2",
+    "express": "^4.22.2",
     "open": "^8.4.2"
+  },
+  "_comment_overrides": "Patched transitive deps. @handcash/handcash-connect@0.8.11 is the latest stable release and still pins vulnerable nanoid/joi, so they are forced here. Ranges are pinned WITHIN the existing major line on purpose: an open '>=' range resolves to the newest major, which pulls ESM-only nanoid 4+ into a CommonJS dependency and swaps express 4's path-to-regexp 0.1.x for the incompatible 8.x API. Revisit when handcash-connect 1.0 ships.",
+  "pnpm": {
+    "overrides": {
+      "nanoid": "^3.3.18",
+      "joi": "^17.13.4",
+      "path-to-regexp": "^0.1.13"
+    }
   },
   "repository": {
     "type": "git",
