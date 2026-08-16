@@ -11,3 +11,10 @@ coverage
 # Secrets — never commit
 .env.local
 .env.*
+# ...but the template carries no secrets and must be committed
+!.env.example
+
+# Publish output: transaction fixture + publish-state.json, written into the
+# repo by `bgit publish --broadcast`. Keep it locally — it is how `--confirm`
+# knows which txids to check — but never commit it.
+bgit-publish/
