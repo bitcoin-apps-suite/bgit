@@ -1,0 +1,39 @@
+bgit-cli
+Copyright (c) 2026 b0ase
+
+This product includes software developed by third parties, vendored under the
+terms of their respective licenses.
+
+--------------------------------------------------------------------------------
+1. bgit (on-chain repository format: publisher, reader, claim)
+--------------------------------------------------------------------------------
+
+    Source:  https://github.com/zcoolz/bgit
+    Commit:  a6383c4ec55b45bdfa197c5185c3961247f0a2d0
+    Author:  Ryan Bennett (zcoolz)
+    License: MIT
+
+Vendored verbatim at lib/chain/ — see lib/chain/UPSTREAM.md for provenance,
+integrity hashes, and the rationale for not modifying these files. The full MIT
+license text is retained at lib/chain/LICENSE.upstream.
+
+The following files are unmodified copies of that work:
+
+    lib/chain/publisher.mjs
+    lib/chain/reader.mjs
+    lib/chain/claim.mjs
+    lib/chain/bgit-vectors.test.mjs
+    lib/chain/SPEC.md
+    lib/chain/AUDIT.md
+
+--------------------------------------------------------------------------------
+2. bitgit (BSV funding and broadcast layer)
+--------------------------------------------------------------------------------
+
+    Source:  https://github.com/b0ase/bitgit
+    Author:  b0ase
+    License: Open BSV License
+
+lib/funding.js is a CommonJS port of the UTXO selection and broadcast-fallback
+logic from bitgit's src/bsv/utxo.ts and src/bsv/broadcast.ts. Both projects share
+the same copyright holder; the Open BSV License restricts use to BSV blockchains.

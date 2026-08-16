@@ -1,17 +1,18 @@
 {
   "name": "bgit-cli",
-  "version": "2.0.2",
-  "description": "Bitcoin-enabled Git wrapper with HandCash OAuth - Timestamp your commits on BitcoinSV",
+  "version": "3.0.0",
+  "description": "Bitcoin-enabled Git wrapper - timestamp commits with HandCash, and publish whole repositories to BitcoinSV so they can be cloned back with stock git",
   "main": "index.js",
   "bin": {
     "bgit": "./index.js"
   },
   "preferGlobal": true,
   "engines": {
-    "node": ">=16.0.0"
+    "node": ">=18.0.0"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "node --test lib/chain/bgit-vectors.test.mjs",
+    "verify-vendor": "node index.js chain verify-vendor",
     "start": "node index.js"
   },
   "keywords": [
@@ -23,12 +24,19 @@
     "blockchain",
     "timestamp",
     "commit",
-    "version-control"
+    "version-control",
+    "archival",
+    "censorship-resistance",
+    "git-bundle"
   ],
   "author": "b0ase",
+  "contributors": [
+    "Ryan Bennett <https://github.com/zcoolz> (on-chain repository format: publisher, reader, claim, spec and test vectors — vendored unmodified from github.com/zcoolz/bgit under MIT)"
+  ],
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@bsv/sdk": "^2.4.1",
     "@handcash/handcash-connect": "^0.8.11",
     "chalk": "^4.1.2",
     "express": "^4.18.2",
@@ -41,5 +49,13 @@
   "bugs": {
     "url": "https://github.com/bitcoin-apps-suite/bgit/issues"
   },
-  "homepage": "https://github.com/bitcoin-apps-suite/bgit#readme"
+  "homepage": "https://github.com/bitcoin-apps-suite/bgit#readme",
+  "files": [
+    "index.js",
+    "handcash.js",
+    "lib/",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ]
 }

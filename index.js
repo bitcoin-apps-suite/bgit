@@ -22,6 +22,7 @@ const showBanner = require('./lib/banner');
 const { ensureAuthenticated, loginCommand, logoutCommand, statusCommand } = require('./lib/auth');
 const { routeCommand, needsAuthentication } = require('./lib/command-router');
 const { getPaymentMode, setPaymentMode } = require('./lib/config');
+const { CHAIN_COMMANDS, routeChainCommand } = require('./lib/chain-commands');
 
 async function main() {
   try {
@@ -37,9 +38,25 @@ async function main() {
     const command = args[0];
     const subcommand = args[1];
 
-    // Show banner for git commands (not auth/config subcommands)
-    if (command !== 'auth' && command !== 'config') {
+    // `--version` must report bgit's version, not git's. Without this it falls
+    // through to the pass-through router and prints `git version …`, which the
+    // README's "verify installation" step relies on being bgit's. The bare
+    // `version` subcommand still passes through to git, as a git wrapper should.
+    if (command === '--version' || command === '-v') {
+      console.log(`bgit ${require('./package.json').version}`);
+      process.exit(0);
+    }
+
+    // Show banner for git commands (not auth/config/chain subcommands)
+    if (command !== 'auth' && command !== 'config' && !CHAIN_COMMANDS.has(command)) {
       showBanner();
+    }
+
+    // On-chain repository commands (publish / reconstruct / claim / chain).
+    // These use a raw BSV key, not HandCash — see lib/funding.js for why.
+    if (CHAIN_COMMANDS.has(command)) {
+      const exitCode = await routeChainCommand(command, args.slice(1));
+      process.exit(exitCode);
     }
 
     // Handle special 'auth' commands
@@ -132,16 +149,30 @@ function showHelp() {
   console.log(chalk.blue.bold('\nbgit - Bitcoin-enabled Git wrapper\n'));
   console.log(chalk.bold('Usage:'));
   console.log('  bgit <git-command> [args...]  Execute git command with optional payment');
-  console.log('  bgit auth <subcommand>        Manage authentication\n');
+  console.log('  bgit auth <subcommand>        Manage authentication');
+  console.log('  bgit publish|reconstruct      Store / recover whole repositories on-chain\n');
 
   console.log(chalk.bold('Authentication Commands:'));
   console.log('  bgit auth login               Authenticate with HandCash');
   console.log('  bgit auth logout              Log out and delete credentials');
   console.log('  bgit auth status              Show authentication status\n');
 
-  console.log(chalk.bold('Payment-Gated Commands:'));
+  console.log(chalk.bold('Payment-Gated Commands:') + chalk.gray('  (HandCash wallet)'));
   console.log('  bgit commit                   Git commit + on-chain timestamp (0.001 BSV)');
   console.log('  bgit push                     Git push + payment (0.001 BSV)\n');
+
+  console.log(chalk.bold('On-Chain Repository Commands:') + chalk.gray('  (raw BSV key — not HandCash)'));
+  console.log('  bgit publish                  Publish full repo history to BSV (dry run by default)');
+  console.log('  bgit publish --broadcast      Publish for real, after showing the cost');
+  console.log('  bgit publish --confirm        Check which transactions have been mined');
+  console.log('  bgit reconstruct --repo-id X  Rebuild a repo from chain into a clonable bundle');
+  console.log('  bgit claim --repo-id X        Claim an unsigned mirror you maintain');
+  console.log('  bgit chain keygen             Generate a publishing key');
+  console.log('  bgit chain verify-vendor      Verify vendored format sources');
+  console.log('  bgit chain spec               Print the on-chain format specification');
+  console.log('  bgit chain credits            Who wrote the on-chain format\n');
+  console.log(chalk.gray('  The on-chain format is Ryan Bennett\'s work (github.com/zcoolz/bgit, MIT),'));
+  console.log(chalk.gray('  vendored unmodified. Not ours — see `bgit chain credits`.\n'));
 
   console.log(chalk.bold('Pass-Through Commands:'));
   console.log('  All other git commands work without payment (status, log, diff, etc.)\n');
@@ -151,10 +182,12 @@ function showHelp() {
   console.log(chalk.gray('  bgit commit -m "Initial commit"         # Commit + timestamp'));
   console.log(chalk.gray('  bgit push origin main                   # Push with payment'));
   console.log(chalk.gray('  bgit status                             # Free, no payment'));
-  console.log(chalk.gray('  bgit log                                # Free, no payment\n'));
+  console.log(chalk.gray('  bgit publish                            # Cost estimate, spends nothing'));
+  console.log(chalk.gray('  bgit publish --broadcast                # Publish history to BSV'));
+  console.log(chalk.gray('  bgit reconstruct --repo-id 1ABC...      # Recover a repo from chain\n'));
 
   console.log(chalk.bold('Learn More:'));
-  console.log('  GitHub: https://github.com/yourusername/bgit');
+  console.log('  GitHub: https://github.com/bitcoin-apps-suite/bgit');
   console.log('  HandCash: https://handcash.io\n');
 }
 

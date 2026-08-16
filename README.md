@@ -1,7 +1,7 @@
 # bgit - Bitcoin-Enabled Git Wrapper
 
-**Version:** 2.0.0
-**Timestamp your commits on BitcoinSV blockchain using HandCash OAuth**
+**Version:** 3.0.0
+**Timestamp your commits with HandCash — and publish whole repositories to BitcoinSV, clonable back with stock git**
 
 ```
 ██████╗       ██████╗ ██╗████████╗
@@ -17,9 +17,135 @@
 
 ---
 
+## ⚡ The on-chain format is Ryan Bennett's work, not ours
+
+Everything in bgit v3 that publishes a repository to Bitcoin and clones it back —
+the **format, the publisher, the reader, the claim mechanism, the specification, and
+the test vectors** — was designed and written by
+**[Ryan Bennett (@zcoolz)](https://github.com/zcoolz)** at
+**[github.com/zcoolz/bgit](https://github.com/zcoolz/bgit)**.
+
+We did not invent it. We did not reimplement it. We did not improve it. It is
+[vendored **unmodified**](./lib/chain/) under the MIT license, byte-for-byte, and
+`bgit chain verify-vendor` will prove it to you at any time.
+
+Before its first broadcast, that format survived **three adversarial review rounds by
+OpenAI's Codex** against a Claude-built design, and it ships its own audit record of
+13 formal findings. It published Monero's complete 13,241-commit history to Bitcoin
+for about six dollars. That work is his.
+
+**If this capability is why you are here, go star
+[zcoolz/bgit](https://github.com/zcoolz/bgit) and read
+[his spec](./lib/chain/SPEC.md).** What bgit adds on top is convenience —
+auto-bundling, funding, and broadcast plumbing. The hard part was already done.
+
+> **Note on the name.** `zcoolz/bgit` and this project were built independently and
+> share a name by coincidence. His is the on-chain repository format; ours started as
+> a HandCash-gated git wrapper. Neither of us owns the name — we would rather say so
+> plainly than let anyone assume his work is ours.
+
+---
+
 ## What is bgit?
 
-bgit is a Git wrapper that timestamps your commits on the **BitcoinSV blockchain** using **HandCash** micropayments. Every commit you make gets a cryptographically provable timestamp on-chain, creating an immutable record of your code history.
+bgit does two distinct things, and it is worth being clear which is which.
+
+**1. Timestamp commits (v1–v2).** A git wrapper that timestamps your commits on the
+**BitcoinSV blockchain** using **HandCash** micropayments. Every commit gets a
+cryptographically provable timestamp on-chain. This proves *when* something happened.
+
+**2. Publish repositories (v3).** Pack the repo with `git bundle`, write it into BSV
+transactions as plain data, and reconstruct it later from nothing but a transaction
+source — producing a `.bundle` that **stock git clones**. This preserves *what the
+repository was*, with no platform and no company required to stay alive for your
+history to be recoverable.
+
+The second capability is **not our design** — it is
+[Ryan Bennett's format](https://github.com/zcoolz/bgit), vendored unmodified under
+MIT. See the credit at the top of this file, and [`NOTICE`](./NOTICE).
+
+> **Erasure resistant, not availability guaranteed.** Recovery works while at least
+> one archival copy exists and some source will serve it — and anyone may be that
+> source. Git clones the reconstructed bundle, not the blockchain directly. The full
+> limits are in [`lib/chain/SPEC.md`](./lib/chain/SPEC.md); read them before relying
+> on this.
+
+### Two money paths, deliberately separate
+
+| | Funded by | Used for |
+|---|---|---|
+| `commit`, `push` | **HandCash OAuth** (custodial) | Pay-to-operate premium, 0.001 BSV |
+| `publish`, `claim` | **Raw BSV key** (your own UTXO) | Data transactions carrying the repo |
+
+These cannot be merged. HandCash Connect exposes `wallet.pay()` and nothing lower —
+it never yields a private key or a spendable outpoint. Publishing signs
+data-carrying transactions with the repository key and spends a named outpoint it
+verifies provably pays that key before it will sign. A custodial wallet cannot do
+either. **You do not need `bgit auth login` to publish or reconstruct.**
+
+---
+
+## Publishing a repository to Bitcoin
+
+```bash
+# 1. Generate a publishing key (this is NOT your HandCash wallet)
+bgit chain keygen --out publisher-key.json
+#    or: put a WIF in .env.local as BSV_PRIVATE_KEY=...
+
+# 2. Dry run — bundles the repo, builds every transaction, tells you the exact
+#    cost, and spends nothing. This is the default.
+bgit publish
+
+# 3. Fund the printed address, then publish for real.
+#    Funding UTXO selection and broadcasting are automatic; you are asked to
+#    confirm before a single satoshi moves.
+bgit publish --broadcast
+
+# 4. Only this pass may report acceptance. A relay ack is not acceptance.
+bgit publish --confirm --state ./bgit-publish/publish-state.json
+```
+
+Every txid reports **PENDING** until `--confirm` finds it mined.
+
+### Reconstructing a repository from the chain
+
+```bash
+bgit reconstruct --repo-id <the repo address> --out ./recovered.bundle
+git clone ./recovered.bundle my-repo
+```
+
+The reader walks the address, collects the records, verifies every signature and
+every hash, and refuses anything that does not check out. It needs no cooperation
+from us — only a source that still serves the data.
+
+### Claiming a mirror you maintain
+
+A repository someone else mirrored begins as `unsigned-mirror`, `claimable: true` —
+a label saying *the project itself has not signed this*.
+
+```bash
+bgit claim --repo-id <addr> --domain yourproject.org --out ./claim   # dry run
+# host the printed file at https://yourproject.org/.well-known/bgit, then:
+bgit claim --repo-id <addr> --domain yourproject.org --out ./claim --broadcast
+bgit claim --confirm --state ./claim/claim-state.json
+```
+
+A claim proves control of a key and a domain **at the moment it is mined** — not
+project authorship. No reader re-checks the domain afterward, so archive your
+evidence.
+
+### Cost
+
+Roughly **$20 per GB, once**, at the 150 sat/KB fee floor. No renewal, no account.
+A typical source repo's full history lands between pennies and a few dollars.
+`bgit publish` tells you the exact number before you spend anything.
+
+### Other chain commands
+
+```bash
+bgit chain verify-vendor   # confirm the vendored format sources are unmodified
+bgit chain spec            # print the on-chain format specification
+```
 
 ---
 
@@ -216,10 +342,12 @@ A: Commits succeed, payment failure is warned. Pushes are blocked until payment 
 
 ## Requirements
 
-- **Node.js:** >= 16.0.0
+- **Node.js:** >= 18.0.0 (the on-chain commands need global `fetch`)
 - **Git:** Any version
-- **HandCash Account:** https://handcash.io
-- **BSV Funds:** At least 0.01 BSV (~$0.50)
+- **HandCash Account:** https://handcash.io — for `commit` / `push` only
+- **BSV Funds:**
+  - `commit` / `push`: at least 0.01 BSV (~$0.50) in HandCash
+  - `publish`: a funded raw key; cost scales with repo size (~$20/GB, once)
 
 ---
 
@@ -239,28 +367,71 @@ rm -rf ~/.bgit/
 bgit auth login
 ```
 
+**"No publishing key found"**
+Publishing does not use HandCash. Generate a raw key:
+```bash
+bgit chain keygen --out publisher-key.json
+```
+
+**"Insufficient funding at <address>" despite having a balance**
+Publishing chains change from one transaction into the next, so it needs a *single*
+UTXO covering the whole run, not a sufficient total. Consolidate your UTXOs.
+
+**"Vendored sources have DRIFTED from upstream"**
+`lib/chain/` implements an on-chain format that cannot be patched after the fact.
+Do not edit those files — restore them and see `lib/chain/UPSTREAM.md`.
+
 ---
 
 ## Development
 
 ```bash
 # Clone
-git clone https://github.com/yourusername/bgit.git
+git clone https://github.com/bitcoin-apps-suite/bgit.git
 cd bgit
 
-# Install
-npm install
+# Install (pnpm — never npm or yarn)
+pnpm install
 
-# Test
-./index.js auth login
-./index.js commit -m "test"
+# Run the on-chain format's own test vectors
+pnpm test
+
+# Verify vendored sources are unmodified
+pnpm run verify-vendor
+
+# Try it without spending anything
+node index.js publish            # dry run: cost estimate only
 ```
+
+**Known:** `pnpm test` reports 29/30 on macOS. Vector 7b fails because of a
+symlink-vs-realpath bug in upstream's CLI entry detection (`/tmp` → `/private/tmp`),
+not a defect in the format — the corruption detection it tests is verified working.
+Full diagnosis in [`lib/chain/UPSTREAM.md`](./lib/chain/UPSTREAM.md).
+
+---
+
+## Credits
+
+The on-chain repository format — publisher, reader, claim mechanism, specification,
+and test vectors — is the work of **Ryan Bennett ([zcoolz](https://github.com/zcoolz))**,
+from [github.com/zcoolz/bgit](https://github.com/zcoolz/bgit), used under the MIT
+license and vendored **unmodified** at [`lib/chain/`](./lib/chain/).
+
+That format survived three adversarial review rounds by OpenAI's Codex against a
+Claude-built design before its first broadcast, and ships its own audit record. We
+did not reimplement it, and deliberately do not edit it — see
+[`lib/chain/UPSTREAM.md`](./lib/chain/UPSTREAM.md) for why, and
+[`NOTICE`](./NOTICE) for full attribution.
+
+The BSV funding and broadcast layer is ported from
+[b0ase/bitgit](https://github.com/b0ase/bitgit) (Open BSV License).
 
 ---
 
 ## License
 
-ISC
+ISC for bgit itself. Vendored and ported components retain their own licenses —
+see [`NOTICE`](./NOTICE).
 
 ---
 
@@ -269,13 +440,12 @@ ISC
 - **GitHub:** https://github.com/bitcoin-apps-suite/bgit
 - **HandCash:** https://handcash.io
 - **Issues:** https://github.com/bitcoin-apps-suite/bgit/issues
+- **Format spec:** [`lib/chain/SPEC.md`](./lib/chain/SPEC.md)
+- **Upstream format:** https://github.com/zcoolz/bgit
 
 ---
 
 **Made with ❤️ for the Bitcoin developer community**
 
 Timestamp your code. Prove your work. Build on BSV.
-test
-test: verify payment flow Sun Jan  4 02:04:57 GMT 2026
-test retry 2
 test retry 3
