@@ -11,7 +11,9 @@
     "node": ">=18.0.0"
   },
   "scripts": {
-    "test": "node --test lib/chain/bgit-vectors.test.mjs",
+    "test": "node --test test/integration.test.js lib/chain/bgit-vectors.test.mjs",
+    "test:integration": "node --test test/integration.test.js",
+    "test:vectors": "node --test lib/chain/bgit-vectors.test.mjs",
     "verify-vendor": "node index.js chain verify-vendor",
     "start": "node index.js"
   },
