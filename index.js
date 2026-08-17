@@ -166,6 +166,7 @@ function showHelp() {
   console.log('  bgit publish --broadcast      Publish for real, after showing the cost');
   console.log('  bgit publish --confirm        Check which transactions have been mined');
   console.log('  bgit reconstruct --repo-id X  Rebuild a repo from chain into a clonable bundle');
+  console.log('  bgit verify --repo-id X       Check a bundle you HAVE against its commitment');
   console.log('  bgit claim --repo-id X        Claim an unsigned mirror you maintain');
   console.log('  bgit chain keygen             Generate a publishing key');
   console.log('  bgit chain verify-vendor      Verify vendored format sources');

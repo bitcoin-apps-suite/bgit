@@ -375,6 +375,105 @@ describe('publish output and cleanup contract', () => {
 
 // ---------------------------------------------------------------------------
 
+describe('verify', () => {
+  /** Publish a repo to a local chain fixture and return everything needed to verify it. */
+  function publishFixture() {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bgit-verify-'));
+    const git = (...args) => execFileSync('git', ['-C', dir, ...args], { stdio: 'pipe' });
+    execFileSync('git', ['init', '-q', dir], { stdio: 'pipe' });
+    git('config', 'user.email', 'test@example.com');
+    git('config', 'user.name', 'test');
+    fs.writeFileSync(path.join(dir, 'f.txt'), 'contents\n');
+    git('add', '.');
+    git('commit', '-q', '-m', 'init');
+
+    const bundle = path.join(dir, 'r.bundle');
+    git('bundle', 'create', bundle, '--all');
+
+    const { wif, address } = generateKey();
+    const chain = path.join(dir, 'chain');
+    const r = runCli(['publish', '--bundle', bundle, '--local-out', chain], {
+      env: { ...process.env, [DEFAULT_KEY_ENV]: wif },
+    });
+    assert.strictEqual(r.status, 0, `fixture publish failed: ${r.stderr}`);
+    return { dir, bundle, chain, address };
+  }
+
+  test('accepts the bundle the chain commits to', () => {
+    const fx = publishFixture();
+    try {
+      const r = runCli(['verify', '--repo-id', fx.address, '--bundle', fx.bundle, '--local-in', fx.chain]);
+      assert.strictEqual(r.status, 0, r.stderr);
+      assert.match(r.stdout, /VERIFIED/);
+    } finally {
+      fs.rmSync(fx.dir, { recursive: true, force: true });
+    }
+  });
+
+  /** A verify that passes a tampered bundle is worse than no verify at all. */
+  test('rejects a bundle with a single flipped byte', () => {
+    const fx = publishFixture();
+    try {
+      const tampered = path.join(fx.dir, 'tampered.bundle');
+      const buf = fs.readFileSync(fx.bundle);
+      buf[Math.floor(buf.length / 2)] ^= 0xff;
+      fs.writeFileSync(tampered, buf);
+
+      const r = runCli(['verify', '--repo-id', fx.address, '--bundle', tampered, '--local-in', fx.chain]);
+      assert.strictEqual(r.status, 2, 'a tampered bundle must be refused');
+      assert.match(r.stdout, /MISMATCH/);
+      assert.match(r.stdout, /✗ artifact_sha256/);
+    } finally {
+      fs.rmSync(fx.dir, { recursive: true, force: true });
+    }
+  });
+
+  test('rejects an entirely different repo\'s bundle', () => {
+    const fx = publishFixture();
+    const other = fs.mkdtempSync(path.join(os.tmpdir(), 'bgit-other-'));
+    try {
+      execFileSync('git', ['init', '-q', other], { stdio: 'pipe' });
+      const g = (...a) => execFileSync('git', ['-C', other, ...a], { stdio: 'pipe' });
+      g('config', 'user.email', 'x@example.com');
+      g('config', 'user.name', 'x');
+      g('commit', '-q', '--allow-empty', '-m', 'unrelated');
+      const otherBundle = path.join(other, 'o.bundle');
+      g('bundle', 'create', otherBundle, '--all');
+
+      const r = runCli(['verify', '--repo-id', fx.address, '--bundle', otherBundle, '--local-in', fx.chain]);
+      assert.strictEqual(r.status, 2);
+      assert.match(r.stdout, /MISMATCH/);
+    } finally {
+      fs.rmSync(fx.dir, { recursive: true, force: true });
+      fs.rmSync(other, { recursive: true, force: true });
+    }
+  });
+
+  test('requires both --repo-id and --bundle', () => {
+    const a = runCli(['verify', '--repo-id', '1ABC']);
+    assert.notStrictEqual(a.status, 0);
+    assert.match(a.stdout + a.stderr, /--bundle/);
+  });
+
+  test('reports a missing bundle file rather than crashing', () => {
+    const r = runCli(['verify', '--repo-id', '1ABC', '--bundle', '/nonexistent/x.bundle']);
+    assert.strictEqual(r.status, 1);
+    assert.match(r.stdout + r.stderr, /bundle not found/);
+  });
+
+  /** Verify must never be mistaken for proof the payload is recoverable. */
+  test('states that it did not prove recoverability', () => {
+    const fx = publishFixture();
+    try {
+      const r = runCli(['verify', '--repo-id', fx.address, '--bundle', fx.bundle, '--local-in', fx.chain]);
+      assert.match(r.stdout, /did NOT fetch the payload/);
+      assert.match(r.stdout, /bgit reconstruct/);
+    } finally {
+      fs.rmSync(fx.dir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('repo name inference', () => {
   test('infers owner/name from an origin remote', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'bgit-infer-'));

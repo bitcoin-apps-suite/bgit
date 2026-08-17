@@ -118,6 +118,26 @@ The reader walks the address, collects the records, verifies every signature and
 every hash, and refuses anything that does not check out. It needs no cooperation
 from us — only a source that still serves the data.
 
+### Verifying a bundle you already have
+
+If you hold the bundle and only want to know whether it is the one the chain
+attests to, `verify` checks it against the signed on-chain manifest **without
+downloading the payload**:
+
+```bash
+bgit verify --repo-id <the repo address> --bundle ./repo.bundle
+```
+
+It compares `artifact_sha256`, `artifact_bytes`, and `bundle_refs_sha256`
+against the winning artifact manifest, after running the reader's own chain
+resolution — fork resolution, claim authority, and the rule that a manifest's
+signer must be authorized by the ref chain at its mined position.
+
+This answers a different question from `reconstruct`, and the output says so:
+a successful verify proves the bundle **matches the commitment**; it does not
+prove the payload is **recoverable from the chain**. Only a reconstruct
+establishes that.
+
 ### Claiming a mirror you maintain
 
 A repository someone else mirrored begins as `unsigned-mirror`, `claimable: true` —
